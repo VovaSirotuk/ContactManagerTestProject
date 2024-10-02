@@ -1,0 +1,13 @@
+﻿
+<div class="container mt-4">
+    <h2>Upload CSV File</h2>
+    <form asp-action="UploadCSV" method="post" enctype="multipart/form-data" class="mb-4">
+        <div class="mb-3">
+            <label for="csvFile" class="form-label">Select CSV File</label>
+            <input class="form-control" type="file" id="csvFile" name="file" accept=".csv" required>
+            <div class="form-text">Please upload a CSV file containing contacts.</div>
+        </div>
+        <button type="submit" class="btn btn-success">Upload</button>
+    </form>
+</div>
+

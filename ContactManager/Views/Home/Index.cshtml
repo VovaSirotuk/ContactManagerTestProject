@@ -1,0 +1,158 @@
+﻿@model IEnumerable<ContactManager.Models.Person>
+<head>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</head>
+<div class="container mt-4">
+    <h2>Contact List</h2>
+    <table id="personsTable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Date of Birth</th>
+                <th>Married</th>
+                <th>Phone</th>
+                <th>Salary</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+             @foreach (var person in Model)
+            {
+                <tr data-id ="@person.Id">
+                    <td>@person.Name</td>
+                    <td>@person.DateOfBirth.ToShortDateString()</td>
+                    <td>@person.Married</td>
+                    <td>@person.Phone</td>
+                    <td>@person.Salary</td>
+                    <td>
+                        <button class="btn btn-primary edit">Edit</button>
+                        <button class="btn btn-danger delete">Delete</button>
+                    </td>
+                </tr>
+            } 
+        </tbody>
+    </table>
+</div>
+<script>
+    $(document).ready(function () {
+        console.log("fsfd");
+        $('#personsTable').DataTable({
+            "paging": true,        // Пагінація
+            "searching": true,     // Фільтрація
+            "ordering": true,      // Сортування
+            "info": true,          // Показує кількість записів
+            "lengthChange": true   // Дозволяє змінювати кількість рядків на сторінці
+        });
+    });
+    $(document).ready(function () {
+
+        // Подія "click" для кнопки "Edit"
+        // Змінює вміст клітинок на текстові поля для інлайн-редагування
+        $(document).on('click', '.edit', function () {
+            var row = $(this).closest('tr'); // Отримуємо поточний рядок
+            row.find('td').each(function (index, td) {
+                if (index < 5) { // Перші 5 клітинок є полями для редагування
+                    var currentText = $(td).text(); // Поточний текст у клітинці
+                    $(td).html('<input type="text" class="form-control" value="' + currentText + '" />'); // Заміна тексту на поле для вводу
+                }
+            });
+            $(this).toggleClass('edit btn-primary save btn-success').text('Save'); // Зміна кнопки "Edit" на "Save"
+        });
+
+        // Подія "click" для кнопки "Save"
+        // Зберігає змінені дані та надсилає їх на сервер через AJAX
+        $(document).on('click', '.save', function () {
+            var row = $(this).closest('tr'); // Отримуємо поточний рядок
+            var id = row.attr('data-id'); // Отримуємо ID з атрибуту рядка
+
+            var name = row.find('td:eq(0) input').val();
+            var dateOfBirth = row.find('td:eq(1) input').val();
+            var married = row.find('td:eq(2) input').val();
+            var phone = row.find('td:eq(3) input').val();
+            var salary = row.find('td:eq(4) input').val();
+
+            if (name.trim() === '') {
+                alert('Name is required');
+                return false;
+            }
+
+            // Перевірка поля "Date of Birth"
+            if (new Date(dateOfBirth) > new Date()) {
+                alert('Date of Birth cannot be in the future');
+                return false;
+            }
+
+            // Перевірка поля "Phone"
+            var phonePattern = /^[+]?[\d\s-]{10,15}$/;
+            if (!phonePattern.test(phone)) {
+                alert('Please enter a valid phone number');
+                return false;
+            }
+
+            // Перевірка поля "Salary"
+            if (salary < 0 || salary == "") {
+                alert('Salary must be a positive number');
+                return false;
+            }
+
+            var updatedData = {
+                Name: name,         // Нове значення поля "Name"
+                DateOfBirth: dateOfBirth,  // Нове значення поля "Date of Birth"
+                Married: married,      // Нове значення поля "Married"
+                Phone: phone,        // Нове значення поля "Phone"
+                Salary: salary        // Нове значення поля "Salary"
+            };
+            console.log(updatedData);
+
+            // AJAX-запит на сервер для оновлення даних
+            $.ajax({
+                url: '@Url.Action("UpdatePerson", "Home")/' + id,
+                type: 'POST',
+                data: {
+                    Id: id,
+                    Name: updatedData.Name,
+                    DateOfBirth: updatedData.DateOfBirth,
+                    Married: updatedData.Married,
+                    Phone: updatedData.Phone,
+                    Salary: updatedData.Salary
+                }, // Передача даних у форматі JSON
+                success: function (response) {
+                    if (response.success) {
+                        // Якщо оновлення успішне, повертаємо оновлені дані до таблиці
+                        row.find('td').each(function (index, td) {
+                            if (index < 5) {
+                                $(td).html($(td).find('input').val()); // Виводимо збережене значення
+                            }
+                        });
+                        // Зміна кнопки "Save" назад на "Edit"
+                        row.find('.save').toggleClass('save btn-success edit btn-primary').text('Edit');
+                    } else {
+                        // Повідомлення про помилку, якщо щось пішло не так
+                        alert('Error updating data: ' + response.errorMessage);
+                    }
+                }
+            });
+        });
+
+        // Подія "click" для кнопки "Delete"
+        // Видаляє рядок з бази даних через AJAX
+        $(document).on('click', '.delete', function () {
+            var row = $(this).closest('tr'); // Отримуємо поточний рядок
+            var id = row.attr('data-id'); // Отримуємо ID з атрибуту рядка
+            if (confirm('Are you sure you want to delete this record?')) {
+                // Підтвердження видалення та виклик AJAX-запиту
+                $.ajax({
+                    url: '@Url.Action("DeletePerson", "Home")/' + id, // Виклик контролера для видалення
+                    type: 'DELETE',
+                    success: function (response) {
+                        if (response.success) {
+                            row.remove(); // Якщо видалення успішне, видаляємо рядок з таблиці
+                        } else {
+                            alert('Error deleting record: ' + response.errorMessage); // Повідомлення про помилку
+                        }
+                    }
+                });
+            }
+        });
+    });
+</script>
